@@ -1,0 +1,94 @@
+name: Terraform plan on PR to main
+
+on:
+  pull_request:
+    branches: [ main ]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+  id-token: write
+
+env:
+  ARM_USE_OIDC: true
+  ARM_USE_AZUREAD: true
+  ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+  ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+jobs:
+  tf-plan:
+    name: Terraform plan (dev, stage, prod)
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        environment: [ dev, stage, prod ]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login to Azure with OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.14.3
+
+      - name: Terraform init
+        working-directory: environments/${{ matrix.environment }}
+        run: terraform init 
+
+      - name: Terraform validate
+        working-directory: environments/${{ matrix.environment }}
+        run: terraform validate
+
+      - name: Terraform plan
+        id: plan
+        working-directory: environments/${{ matrix.environment }}
+        run: |
+          terraform plan -input=false -no-color > tfplan.txt || true
+
+
+      - name: Append plan to PR comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const env = '${{ matrix.environment }}';
+            const planPath = `environments/${env}/tfplan.txt`;
+            const plan = fs.existsSync(planPath) ? fs.readFileSync(planPath, 'utf8') : 'No plan output.';
+            const header = `### Terraform plan (${env})\n\n\`\`\`\n${plan.substring(0, 60000)}\n\`\`\`\n`;
+            // Find existing bot comment to update
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number
+            });
+            const marker = '<!-- tf-plan-aggregate -->';
+            const existing = comments.find(c => c.user.type === 'Bot' && c.body && c.body.includes(marker));
+            if (existing) {
+              const newBody = existing.body.replace(
+                new RegExp(`### Terraform plan \\(${env}\\)[\\s\\S]*?(?=### Terraform plan|${marker}|$)`),
+                header
+              );
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body: newBody.includes(header) ? newBody : `${newBody}\n${header}`
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: `${header}\n${marker}`
+              });
+            }
