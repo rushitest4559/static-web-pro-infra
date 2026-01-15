@@ -1,16 +1,3 @@
-terraform {
-  required_providers {
-    azurerm = {
-      source  = "hashicorp/azurerm"
-      version = "~> 3.90.0"
-    }
-    azuread = {
-      source  = "hashicorp/azuread"
-      version = ">=2.47.0"
-    }
-  }
-}
-
 
 data "azuread_application" "github_oidc_app" {
   display_name = "static-web-app"
