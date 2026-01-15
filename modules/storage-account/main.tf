@@ -1,5 +1,5 @@
 
-data "azuread_application" "github_oidc_app" {
+data "azuread_service_principal" "github_oidc_sp" {
   display_name = "static-web-app"
 }
 
@@ -23,5 +23,5 @@ resource "azurerm_storage_account_static_website" "sasw" {
 resource "azurerm_role_assignment" "ra" {
   scope = azurerm_storage_account.sa.id
   role_definition_name = "Storage Blob Data Contributor"
-  principal_id = data.azuread_application.github_oidc_app.object_id
+  principal_id = data.azuread_service_principal.github_oidc_sp.object_id
 }
