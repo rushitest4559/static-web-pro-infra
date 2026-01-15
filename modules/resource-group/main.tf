@@ -1,8 +1,8 @@
-resource "azurerm_resource_group" "example" {
-  name     = "testResourceGroup1"
-  location = "West US"
+resource "azurerm_resource_group" "rg" {
+  name     = "static-web-rg-${var.env}"
+  location = "East US 2"
 
   tags = {
-    environment = "Production"
+    environment = var.env
   }
 }

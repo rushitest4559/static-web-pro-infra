@@ -17,7 +17,7 @@ env:
 
 jobs:
   tf-apply:
-    name: Terraform apply (dev, stage, prod)
+    name: Terraform apply ${{ matrix.environment }}
     runs-on: ubuntu-latest
     strategy:
       matrix:

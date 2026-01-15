@@ -19,7 +19,7 @@ env:
 
 jobs:
   tf-plan:
-    name: Terraform plan (dev, stage, prod)
+    name: Terraform plan ${{ matrix.environment }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
