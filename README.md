@@ -1,92 +1,79 @@
-# 🛡️ Enterprise-Grade Static Site Infrastructure  
-**A No-Ops, GitOps-driven deployment framework for Azure**
+# Static Web Pro Infra
+
+This repository contains Terraform infrastructure code for deploying a **production-ready static website platform on Azure**, fully automated via **GitHub Actions + OIDC**.
 
 ---
 
-## 1. High-Level Architecture
+## 🏗 What This Repo Does
 
-This project implements a **Zero Standing Access** model.  
-No human has write access to the production environment; all changes are managed via **Identity Federation (OIDC)** and **GitHub Actions**.
-
-### 🛠️ Tech Stack
-- **Cloud:** Azure (Storage Accounts, Entra ID, Resource Groups)
-- **IaC:** Terraform (Folder-based separation)
-- **CI/CD:** GitHub Actions (Environments & OIDC)
-- **Security:** Microsoft Entra ID (OIDC), ABAC, RBAC
+- Provisions Azure infrastructure for **DEV / STAGE / PROD**
+- Uses **Terraform** with remote state stored in **Azure Storage**
+- Enforces **PR-based workflow** with plan-before-apply
+- Zero long-lived secrets (**OIDC only**)
 
 ---
 
-## 2. Structural Design
+## 🔐 Authentication & Security (One-Time Manual Setup)
 
-### 📂 Repository Strategy
-To separate concerns and reduce risk, the project is split into two independent repositories:
-- **infra-repo:** Manages the *House* (Resource Groups, Storage Accounts, IAM, Networking)
-- **app-repo:** Manages the *Furniture* (HTML/CSS files)
+Before automation, the following was configured manually in Azure:
 
-### 🗄️ Resource Group Isolation
-Four Resource Groups are used to strictly control blast radius:
-- **rg-state:** Permanent storage for Terraform backend
-- **rg-dev:** Volatile environment for rapid testing
-- **rg-stage:** Production mirror for final validation
-- **rg-prod:** Mission-critical production environment
+### Created
 
----
+- Entra ID App (Service Principal)
+- Configured **5 Federated Credentials**
+  - 2 for infra repo (main + PR)
+  - 3 for app repo (dev, stage, prod)
 
-## 3. Security Model
+### Granted Roles
 
-### 🔑 Zero-Secret Identity (OIDC)
-OpenID Connect (OIDC) is used to connect GitHub to Azure:
-- **No Client Secrets:** No credentials stored in GitHub
-- **Federated Credentials:** Azure trusts tokens only from specific repos, branches, and environments
-- **3 Scoped Identities:** Separate Entra ID applications (`app-dev`, `app-stage`, `app-prod`), each restricted to its own Resource Group
+- **Contributor** on subscription
+- **Storage Blob Data Contributor** on Terraform state storage
+- Permissions to list Entra ID apps
+- Permission to assign roles to storage accounts
 
-### 📜 State Management & ABAC
-- **Remote Backend:** Terraform state stored in a private Blob container in `rg-state`
-- **State Locking:** Azure Blob leasing prevents concurrent execution
-- **ABAC:** Conditions ensure `app-dev` can only access `tfstate/dev/` paths in the state container
+### Resources Created
+
+- Dedicated resource group for Terraform state
+- Storage account + `tfstate` container
+
+After this, **all infrastructure is managed only via CI/CD**.
 
 ---
 
-## 4. The “Golden Path” Lifecycle (CI/CD)
+## 🔄 CI/CD Workflow
 
-### 🚀 Infrastructure Repository Flow
-**Pull Request**
-- Runs `terraform validate` and `terraform plan` for Dev, Stage, and Prod
+### On Pull Request → `master`
 
-**Merge to Main**
-- Auto-deploys **Dev**
-- **Stage Gate:** Requires Lead approval → Apply to Stage
-- **Prod Gate:** Requires Lead approval → Apply to Production
+- Runs `terraform init / validate / plan`
+- Executes plan for **dev, stage, prod**
+- Automatically posts plan output to PR comments
 
-### 🌐 Application Repository Flow & Safety Net
-Each Storage Account contains two containers:
-- `$web` — Current version
-- `previous-version` — Backup
+### On Merge to `master`
 
-**Backup Step**
-- Current `$web` contents copied to `previous-version`
-
-**Deploy Step**
-- New files uploaded to `$web`
-
-**Rollback Gate**
-- After Prod deployment, pipeline pauses at a Rollback Environment:
-  - **Approved:** Instantly restore `previous-version` to `$web`
-  - **Skipped:** Deployment is finalized
+- Runs `terraform apply`
+- Applies infra sequentially for **dev, stage, prod**
+- Fully automated, no manual steps
 
 ---
 
-## 5. Operations & Observability
+## 📦 State Management
 
-- **No-Ops:** Developers have zero write access to the Azure Portal
-- **Monitoring:** Team members use *Monitoring Reader* role for Azure Monitor and Log Analytics
-- **Audit Trail:** Every infrastructure change is tied to a Git commit and peer-reviewed Pull Request
+- Remote backend: **Azure Storage**
+- State isolation per environment
+- Safe for team usage and parallel runs
 
 ---
 
-## 💡 Key Benefits
+## 🔗 Related Repository
 
-- **Security:** No long-lived secrets and minimal human access
-- **Reliability:** Sequential Dev → Stage → Prod deployments with approval gates
-- **Recovery:** Instant container-based rollback with MTTR measured in seconds
-- **Scale:** Modular Terraform structure enables new environments in minutes
+Static website application + deployment pipeline:  
+👉 https://github.com/rushitest4559/static-web-pro-app
+
+---
+
+## 🛠 Tech Stack
+
+- **Terraform**
+- **GitHub Actions**
+- **Azure** (Entra ID, Storage, RBAC)
+- **OIDC Authentication**
