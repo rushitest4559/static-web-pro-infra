@@ -4,7 +4,7 @@ data "azuread_application" "github_oidc_app" {
 }
 
 resource "azurerm_storage_account" "sa" {
-    name = "static-website-sa-${var.env}"
+    name = "rushistaticwebsitesa${var.env}"
     account_replication_type = "LRS"
     account_tier = "Standard"
     resource_group_name = var.rg_name
