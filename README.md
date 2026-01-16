@@ -1,60 +1,72 @@
-# Static Web Pro Infra
+# Static Web Pro – Infrastructure (GitOps with Terraform)
 
-This repository contains Terraform infrastructure code for deploying a **production-ready static website platform on Azure**, fully automated via **GitHub Actions + OIDC**.
+This repository contains Terraform infrastructure code for deploying a **production-style static website platform on Azure**, automated using **GitHub Actions + OIDC (no long-lived secrets)**.
 
 ---
 
-## 🏗 What This Repo Does
+## 🏗 What This Repository Does
 
 - Provisions Azure infrastructure for **DEV / STAGE / PROD**
 - Uses **Terraform** with remote state stored in **Azure Storage**
-- Enforces **PR-based workflow** with plan-before-apply
-- Zero long-lived secrets (**OIDC only**)
+- Enforces a **PR-based GitOps workflow** (plan before apply)
+- All infrastructure changes happen **only via GitHub Actions**
+- No manual Azure Portal changes after initial bootstrap
 
 ---
 
-## 🔐 Authentication & Security (One-Time Manual Setup)
+## 🔐 Authentication & Security (One-Time Bootstrap)
 
-Before automation, the following was configured manually in Azure:
+> ⚠️ This setup is required **once** to enable secure CI/CD automation.
 
-### Created
+### Manually Configured in Azure
 
-- Entra ID App (Service Principal)
-- Configured **5 Federated Credentials**
-  - 2 for infra repo (main + PR)
-  - 3 for app repo (dev, stage, prod)
+#### Identity
+- Azure Entra ID Application (Service Principal)
+- **Federated Credentials (OIDC)** configured:
+  - Infra repo: PR workflow, main branch
+  - App repo: dev, stage, prod
 
-### Granted Roles
-
-- **Contributor** on subscription
+#### Permissions (Current State)
+- **Contributor** role (broad, for demo simplicity)
 - **Storage Blob Data Contributor** on Terraform state storage
-- Permissions to list Entra ID apps
-- Permission to assign roles to storage accounts
+- Required permissions for Terraform state access and role assignments
 
-### Resources Created
+> ℹ️ Permissions are intentionally broader for demonstration and will be reduced (see Future Improvements).
 
-- Dedicated resource group for Terraform state
-- Storage account + `tfstate` container
+#### State Infrastructure
+- Dedicated Resource Group for Terraform state
+- Storage Account with `tfstate` container
 
-After this, **all infrastructure is managed only via CI/CD**.
+After this bootstrap, **no credentials or secrets are stored in GitHub**.
 
 ---
 
-## 🔄 CI/CD Workflow
+## 🔄 CI/CD Workflow (GitOps)
 
-### On Pull Request → `master`
+### Pull Request → `master`
 
-- Runs `terraform init / validate / plan`
-- Executes plan for **dev, stage, prod**
-- Automatically posts plan output to PR comments
-![Demo](./assets/make-pull-request.mp4)
+- Runs:
+  - `terraform init`
+  - `terraform validate`
+  - `terraform plan`
+- Executes plans for:
+  - `dev`
+  - `stage`
+  - `prod`
+- Plan output is posted automatically to PR comments
 
-### On Merge to `master`
+> Purpose: visibility and review before merge
+
+---
+
+### Merge to `master`
 
 - Runs `terraform apply`
-- Applies infra sequentially for **dev, stage, prod**
-- Fully automated, no manual steps
-![Demo](./assets/merge-pull-request.mp4)
+- Applies environments sequentially:
+  - dev → stage → prod
+- Fully automated for demonstration
+
+> ⚠️ In real production systems, **prod would be approval-gated**.
 
 ---
 
@@ -62,20 +74,54 @@ After this, **all infrastructure is managed only via CI/CD**.
 
 - Remote backend: **Azure Storage**
 - State isolation per environment
-- Safe for team usage and parallel runs
+- Safe for team usage and concurrent workflows
+
+---
+
+## 🎥 Demo Videos
+
+🎥 Demo: https://youtu.be/f-fXBQAMODQ
 
 ---
 
 ## 🔗 Related Repository
 
-Static website application + deployment pipeline:  
+Static website application and deployment pipeline:  
 👉 https://github.com/rushitest4559/static-web-pro-app
 
 ---
 
 ## 🛠 Tech Stack
 
-- **Terraform**
-- **GitHub Actions**
-- **Azure** (Entra ID, Storage, RBAC)
-- **OIDC Authentication**
+- Terraform
+- GitHub Actions
+- Azure (Entra ID, RBAC, Storage)
+- OIDC-based authentication
+
+---
+
+## 🚀 Future Improvements
+
+Planned enhancements to move closer to real enterprise setups:
+
+- Reduce permissions:
+  - Replace subscription-level `Contributor`
+  - Scope roles to Resource Group or individual resources
+- Add approval gates:
+  - Manual approval for `prod` apply
+  - Environment protection rules in GitHub
+- Drift detection:
+  - Scheduled `terraform plan` for drift visibility
+- Break-glass access:
+  - Separate emergency role for incidents
+- Policy enforcement:
+  - Azure Policy / Terraform policy-as-code
+
+---
+
+## 🧠 Key Takeaway
+
+This project demonstrates **GitOps-style infrastructure management**:
+- Git as the source of truth
+- Automated, auditable changes
+- Secure, secretless CI/CD using OIDC

@@ -3,6 +3,9 @@ name: Terraform apply on merge to main
 on:
   push:
     branches: [ master ]
+    paths: 
+      - 'environments/**'
+      - 'modules/**'
 
 permissions:
   contents: read
