@@ -47,12 +47,14 @@ After this, **all infrastructure is managed only via CI/CD**.
 - Runs `terraform init / validate / plan`
 - Executes plan for **dev, stage, prod**
 - Automatically posts plan output to PR comments
+![Demo](./assets/make-pull-request.mp4)
 
 ### On Merge to `master`
 
 - Runs `terraform apply`
 - Applies infra sequentially for **dev, stage, prod**
 - Fully automated, no manual steps
+![Demo](./assets/merge-pull-request.mp4)
 
 ---
 
